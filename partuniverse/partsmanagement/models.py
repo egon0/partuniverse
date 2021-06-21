@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 import os
 import uuid
 import logging
@@ -13,9 +12,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils import timezone
-from .utils import (
-    validate_file_extension
-)
+from .utils import validate_file_extension
 
 # Exceptions
 from .exceptions import (
@@ -24,7 +21,7 @@ from .exceptions import (
     CircleDetectedException,
     TransactionAllreadyRevertedException,
     StorageItemIsTheSameException,
-    StorageItemBelowZeroException
+    StorageItemBelowZeroException,
 )
 
 
@@ -33,116 +30,130 @@ logger = logging.getLogger(__name__)
 # Just defining units used on the system here.
 # Might can be moved to a seperate file at some point.
 UNIT_CHOICES = (
-    (_('Length'), (
-                  ('m', _('meters')),
-                  ('cm', _('centimeters'))
-    )),
-    (_('Volume'), (
-                  ('l', _('litres')),
-                  ('m³', _('cubicmeters')),
-                  ('ccm', _('cubic centimeters'))
-    )),
-    (_('Piece'), (
-                 ('pc', _('piece')),
-    )),
-    (_('n/A'), _('Unknown')),
+    (_("Length"), (("m", _("meters")), ("cm", _("centimeters")))),
+    (
+        _("Volume"),
+        (
+            ("l", _("litres")),
+            ("m³", _("cubicmeters")),
+            ("ccm", _("cubic centimeters")),
+        ),
+    ),
+    (_("Piece"), (("pc", _("piece")),)),
+    (_("n/A"), _("Unknown")),
 )
 
 STATE_CHOICES = (
-    ('paid', _('Paid')),
-    ('open', _('Open')),
-    ('res', _('Reserverd'))
+    ("paid", _("Paid")),
+    ("open", _("Open")),
+    ("res", _("Reserverd")),
 )
 
 
-@python_2_unicode_compatible
 class StorageType(models.Model):
     """ Defining a general typ of storage """
 
     name = models.CharField(
         max_length=50,
-        help_text=_("The name for a storage type. Should be unique")
+        help_text=_("The name for a storage type. Should be unique"),
     )
     description = models.TextField(
         _("Description"),
         blank=True,
         null=True,
-        help_text=_("A short description.")
+        help_text=_("A short description."),
     )
     pic = models.ImageField(
         null=True,
         blank=True,
-        upload_to='uploads/storagetypes/',
-        help_text=_("If you have a typical image of such a storage, "
-                    "this is the place where it belongs to.")
+        upload_to="uploads/storagetypes/",
+        help_text=_(
+            "If you have a typical image of such a storage, "
+            "this is the place where it belongs to."
+        ),
     )
 
     def __str__(self):
-        return u'%s' % self.name
+        return "%s" % self.name
 
     class Meta:
         verbose_name = _("Storage Type")
         verbose_name_plural = _("Storage Types")
-        ordering = ['name']
+        ordering = ["name"]
 
 
-@python_2_unicode_compatible
 class StoragePlace(models.Model):
     """ Representing the general storage place. This can be either a
         general storage or a particular place inside a storage as
         e.g. a shelf."""
 
     @classmethod
-    def createBulkStorage(cls, storagetype, parent=None, entries=('A1')):
+    def createBulkStorage(
+        cls, storagetype, parent=None, entries=("A1"), owner=None
+    ):
         for entry in entries:
             StoragePlace.objects.create(
-                name=entry,
-                storage_type=storagetype,
-                parent=parent)
+                name=entry, storage_type=storagetype, parent=parent, owner=None
+            )
 
     # The Name could be e.g. cordinates or something else meaningfull
     name = models.CharField(
         max_length=50,
-        help_text=_("A name for the storage place."
-                    "E.g. coordinates inside a book shelve.")
+        help_text=_(
+            "A name for the storage place."
+            "E.g. coordinates inside a book shelve."
+        ),
     )
     storage_type = models.ForeignKey(
         StorageType,
-        help_text=_("Of which type is the storage place.")
+        help_text=_("Of which type is the storage place."),
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+    )
+    owner = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        verbose_name=_("Owned by"),
+        help_text=_("The user who is responsible for the storage."),
+        on_delete=models.SET_NULL,
     )
     parent = models.ForeignKey(
         "self",
         null=True,
         blank=True,
+        on_delete=models.CASCADE,
         verbose_name=_("Parent storage"),
-        help_text=_("The storage the current storage is part of.")
+        help_text=_("The storage the current storage is part of."),
     )
     disabled = models.BooleanField(
         _("Disabled"),
         default=False,
-        help_text=_("Whether a storage is active.")
+        help_text=_("Whether a storage is active."),
     )
     pic = models.ImageField(
         null=True,
         blank=True,
-        upload_to='uploads/storageplaces/',
-        help_text=_("So does look the place in real.")
+        upload_to="uploads/storageplaces/",
+        help_text=_("So does look the place in real."),
     )
     description = models.TextField(
         _("Description"),
         blank=True,
         null=True,
-        help_text=_("A short description.")
+        help_text=_("A short description."),
     )
 
     def __str__(self):
         if self.parent is None:
-            return u'%s' % self.name
+            return "%s" % self.name
         else:
-            return (u'%s%s%s' % (
+            return "%s%s%s" % (
                 self.parent,
                 settings.PARENT_DELIMITER,
-                self.name))
+                self.name,
+            )
 
     def get_parents(self):
         """ Returns a list with parants of that StoragePare incl itself"""
@@ -150,10 +161,14 @@ class StoragePlace(models.Model):
         _next = self
         while True:
             if _next.id in result:
-                raise(
+                raise (
                     CircleDetectedException(
-                        _('There seems to be a circle inside'
-                          'ancestors at %s.' % (self.id))))
+                        _(
+                            "There seems to be a circle inside"
+                            "ancestors at %s." % (self.id)
+                        )
+                    )
+                )
             else:
                 result.append(_next.id)
                 if _next.parent is not None:
@@ -186,7 +201,11 @@ class StoragePlace(models.Model):
         result.extend(list(self.storageitem_set.all()))
         if storages:
             for storage in storages:
-                result.extend(storage.storageitem_set.all().order_by('part'))
+                result.extend(
+                    storage.storageitem_set.all()
+                    .exclude(disabled="True")
+                    .order_by("part")
+                )
         sorted_list = sorted(result, key=lambda x: x.part.name)
         return sorted_list
 
@@ -198,133 +217,133 @@ class StoragePlace(models.Model):
                 self.parent.get_parents()
             except CircleDetectedException:
                 raise ValidationError(
-                    {'parent': _('The storage cannot be one of its ancestors')}
+                    {"parent": _("The storage cannot be one of its ancestors")}
                 )
 
     class Meta:
         verbose_name = _("Storage Place")
         verbose_name_plural = _("Storage Places")
-        ordering = ['name']
+        ordering = ["name"]
 
 
-@python_2_unicode_compatible
 class Manufacturer(models.Model):
     """ Manufacturer for a particular item """
 
     name = models.CharField(
-        max_length=50,
-        help_text=_("Name of the manufacturer.")
+        max_length=50, help_text=_("Name of the manufacturer.")
     )
     logo = models.ImageField(
         null=True,
         blank=True,
-        upload_to='uploads/logos/',
-        help_text=_("The logo of the company.")
+        upload_to="uploads/logos/",
+        help_text=_("The logo of the company."),
     )
     url = models.URLField(
         null=True,
         blank=True,
-        help_text=_("The URL to homepage of manufacturer.")
+        help_text=_("The URL to homepage of manufacturer."),
     )
     creation_time = models.DateTimeField(
         auto_now_add=True,
-        help_text=_("Timestamp the manufacturer was created at.")
+        help_text=_("Timestamp the manufacturer was created at."),
     )
     created_by = models.ForeignKey(
         User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         verbose_name=_("Added by"),
-        help_text=_("The user the manufacturer was created by.")
+        help_text=_("The user the manufacturer was created by."),
     )
 
     def get_parts(self):
-        return list(self.part_set.all().order_by('name'))
+        return list(self.part_set.all().order_by("name"))
 
     def __str__(self):
-        return '%s' % self.name
+        return "%s" % self.name
 
     class Meta:
         verbose_name = _("Manufacturer")
         verbose_name_plural = _("Manufacturers")
-        ordering = ['name']
+        ordering = ["name"]
 
 
-@python_2_unicode_compatible
 class Distributor(models.Model):
     """ A distributor which is selling a particular part """
 
     name = models.CharField(
-        max_length=50,
-        help_text=_("Name of the distributor")
+        max_length=50, help_text=_("Name of the distributor")
     )
     logo = models.ImageField(
         null=True,
         blank=True,
-        upload_to='uploads/logos/',
-        help_text=_("The logo of the company.")
+        upload_to="uploads/logos/",
+        help_text=_("The logo of the company."),
     )
     url = models.URLField(
         null=True,
         blank=True,
-        help_text=_("The URL to homepage of distributor.")
+        help_text=_("The URL to homepage of distributor."),
     )
 
     creation_time = models.DateTimeField(
         _("Creation time"),
         auto_now_add=True,
-        help_text=_("Timestamp the distributor was created at.")
+        help_text=_("Timestamp the distributor was created at."),
     )
     created_by = models.ForeignKey(
         User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         verbose_name=_("Added by"),
-        help_text=_("User who created the distributor.")
+        help_text=_("User who created the distributor."),
     )
 
     def __str__(self):
-        return u'%s' % self.name
+        return u"%s" % self.name
 
     class Meta:
         verbose_name = _("Distributor")
         verbose_name_plural = _("Distributors")
-        ordering = ['name']
+        ordering = ["name"]
 
 
-@python_2_unicode_compatible
 class Category(models.Model):
     """ Representing a category a part might contains to.
     E.g. resistor """
 
     name = models.CharField(
-        max_length=50,
-        help_text=_("Name of the category.")
+        max_length=50, help_text=_("Name of the category.")
     )
     parent = models.ForeignKey(
         "self",
         null=True,
         blank=True,
-        help_text=_("If having a subcateogry, the parent.")
+        on_delete=models.CASCADE,
+        help_text=_("If having a subcateogry, the parent."),
     )
     description = models.TextField(
         _("Description"),
         blank=True,
         null=True,
-        help_text=_("A short summarize of this category.")
+        help_text=_("A short summarize of this category."),
     )
     pic = models.ImageField(
         null=True,
         blank=True,
-        upload_to='uploads/categories/',
-        help_text=_("Some picutre for category.")
+        upload_to="uploads/categories/",
+        help_text=_("Some picutre for category."),
     )
 
     def __str__(self):
         if self.parent is None:
-            return u'{}'.format(self.name)
+            return "{}".format(self.name)
         else:
-            return (
-                u'%s%s%s' % (
-                    self.parent,
-                    settings.PARENT_DELIMITER,
-                    self.name)
+            return "%s%s%s" % (
+                self.parent,
+                settings.PARENT_DELIMITER,
+                self.name,
             )
 
     def get_parents(self):
@@ -333,9 +352,14 @@ class Category(models.Model):
         _next = self
         while True:
             if _next.id in result:
-                raise(CircleDetectedException(
-                    _('There seems to be a circle inside '
-                      'ancestors of {}.'.format(self.id))))
+                raise (
+                    CircleDetectedException(
+                        _(
+                            "There seems to be a circle inside "
+                            "ancestors of {}.".format(self.id)
+                        )
+                    )
+                )
             else:
                 result.append(_next.id)
                 if _next.parent is not None:
@@ -352,8 +376,11 @@ class Category(models.Model):
                 self.parent.get_parents()
             except CircleDetectedException:
                 raise ValidationError(
-                    {'parent': _('The category cannot be one of '
-                                 'its ancestors.')}
+                    {
+                        "parent": _(
+                            "The category cannot be one of " "its ancestors."
+                        )
+                    }
                 )
 
     def get_parts(self):
@@ -367,17 +394,14 @@ class Category(models.Model):
         unique_together = ("name", "parent")
         verbose_name = _("Category")
         verbose_name_plural = _("Categories")
-        ordering = ['name']
+        ordering = ["name"]
 
 
-@python_2_unicode_compatible
 class Part(models.Model):
     """ Representing a special kind of parts """
 
     name = models.CharField(
-        _("Name of part"),
-        max_length=255,
-        help_text=_("Name of the part.")
+        _("Name of part"), max_length=255, help_text=_("Name of the part.")
     )
     sku = models.CharField(
         _("SKU"),
@@ -385,13 +409,13 @@ class Part(models.Model):
         unique=True,
         help_text=_("A installation unique idendifier for the part."),
         null=True,
-        blank=True
+        blank=True,
     )
     description = models.TextField(
         _("Description"),
         blank=True,
         null=True,
-        help_text=_("A long text description of the part")
+        help_text=_("A long text description of the part"),
     )
     min_stock = models.DecimalField(
         _("Minimal stock"),
@@ -399,49 +423,51 @@ class Part(models.Model):
         decimal_places=4,
         null=True,
         blank=True,
-        help_text=_("Set a minimum that should be stored.")
+        help_text=_("Set a minimum that should be stored."),
     )
     unit = models.CharField(
         _("Messuring unit"),
         max_length=3,
         choices=UNIT_CHOICES,
         blank=False,
-        default='---',
-        help_text=_("The unit quantities are in.")
+        default="---",
+        help_text=_("The unit quantities are in."),
     )
     pic = models.ImageField(
         null=True,
         blank=True,
-        upload_to=os.path.join('part'),
-        help_text=_("The actual image.")
+        upload_to=os.path.join("part"),
+        help_text=_("The actual image."),
     )
     image_url = models.CharField(
         max_length=255,
         null=True,
         blank=True,
-        help_text=_("The URL of the original image.")
+        help_text=_("The URL of the original image."),
     )
     data_sheet = models.FileField(
         _("Data sheet"),
         help_text=_("A document containing important addition information"),
-        upload_to='datasheets',
+        upload_to="datasheets",
         validators=[validate_file_extension],
         null=True,
-        blank=True
+        blank=True,
     )
     manufacturer = models.ForeignKey(
         Manufacturer,
         verbose_name=_("Manufacturer"),
         null=True,
         blank=True,
-        help_text=_("The manufacturer of the part.")
+        on_delete=models.SET_NULL,
+        help_text=_("The manufacturer of the part."),
     )
     distributor = models.ForeignKey(
         Distributor,
         verbose_name=_("Distributor"),
         null=True,
         blank=True,
-        help_text=_("The usual distributor of the part.")
+        on_delete=models.SET_NULL,
+        help_text=_("The usual distributor of the part."),
     )
     price = models.DecimalField(
         _("Cost of the part"),
@@ -449,37 +475,40 @@ class Part(models.Model):
         null=True,
         blank=True,
         max_digits=6,
-        decimal_places=2
+        decimal_places=2,
     )
     categories = models.ManyToManyField(
         Category,
         verbose_name=_("Category"),
-        help_text=_("A list of categories the part is in.")
+        help_text=_("A list of categories the part is in."),
     )
     creation_time = models.DateTimeField(
         _("Creation time"),
         auto_now_add=True,
-        help_text=_("Timestamp the part was created on.")
+        help_text=_("Timestamp the part was created on."),
     )
     created_by = models.ForeignKey(
         User,
         verbose_name=_("Added by"),
-        help_text=_("The user the part was created by.")
+        help_text=_("The user the part was created by."),
+        on_delete=models.SET_NULL,
+        null=True,
     )
     disabled = models.BooleanField(
         _("Disabled"),
         default=False,
-        help_text=_("Whether the part is active or not.")
+        help_text=_("Whether the part is active or not."),
     )
 
     def __str__(self):
-        return '%s' % self.name
+        return "%s" % self.name
 
     def data_sheet_name(self):
         return os.path.basename(self.data_sheet.name)
 
     def get_storage_items(self):
-        tmp = self.storageitem_set.all().exclude(disabled='True')
+        tmp = self.storageitem_set.all().exclude(disabled="True")
+        tmp = sorted(tmp, key=lambda x: x.__str__())
         if tmp:
             return tmp
         else:
@@ -491,7 +520,10 @@ class Part(models.Model):
         super(Part, self).save(*args, **kwargs)
 
     def get_on_stock(self):
-        """ Returns the amount of items which are on stock over all storages """
+        """
+        Returns the amount of items which are on stock over all
+        storages
+        """
 
         # Catching all StorageItems connected with this Part and
         # calculating sum of them
@@ -508,8 +540,9 @@ class Part(models.Model):
             If either on_stock or min_stock is not defined, it will
             return False """
         currently_on_stock = self.get_on_stock()
-        return (self.min_stock is not None and
-                currently_on_stock < self.min_stock)
+        return (
+            self.min_stock is not None and currently_on_stock < self.min_stock
+        )
 
     def is_on_stock(self):
         """ Returns True, if the item is on stock.
@@ -529,26 +562,27 @@ class Part(models.Model):
         # We cannot work on not given StorageItems
         if si1 is None or si2 is None:
             raise PartsmanagementException(
-                u'One of the storage items seems to not exists: %s, %s' % (
-                    si1,
-                    si2
-                )
+                "One of the storage items seems to not exists: %s, %s"
+                % (si1, si2)
             )
 
         # We need to check, whether we don't merge different parts here
         if si1.part.id != si2.part.id or self.id != si1.part.id:
             raise PartsNotFitException(
-                'Cannot merge not idendical parts. '
-                'Parts »{}« and »{}« are not idendical'.format(
-                    si1.part,
-                    si2.part))
+                "Cannot merge not idendical parts. "
+                "Parts »{}« and »{}« are not idendical".format(
+                    si1.part, si2.part
+                )
+            )
 
         # Check, whether si1 and si2 are different storage types at all
         # If so, we better don't do anything.
         if si1.id == si2.id:
             raise StorageItemIsTheSameException(
-                u'{} and {} are idendical. Nothing to merge'.format(
-                    si1.id, si2.id))
+                "{} and {} are idendical. Nothing to merge".format(
+                    si1.id, si2.id
+                )
+            )
 
         # Special behavior for on_stock is None storage items
         # 0x None -> New on_stock is si1.on_stock + si2.on_stock
@@ -578,18 +612,19 @@ class Part(models.Model):
     class Meta:
         verbose_name = _("Part")
         verbose_name_plural = _("Parts")
-        ordering = ['name']
+        ordering = ["name"]
 
 
-@python_2_unicode_compatible
 class StorageItem(models.Model):
     part = models.ForeignKey(
         Part,
-        help_text=_("The part stored at this spot.")
+        help_text=_("The part stored at this spot."),
+        on_delete=models.PROTECT,
     )
     storage = models.ForeignKey(
         StoragePlace,
-        help_text=_("The storage the part is stored in.")
+        help_text=_("The storage the part is stored in."),
+        on_delete=models.PROTECT,
     )
     on_stock = models.DecimalField(
         _("Parts inside storage"),
@@ -597,26 +632,49 @@ class StorageItem(models.Model):
         decimal_places=4,
         null=True,
         blank=True,
-        help_text=_("The amount currently stored.")
+        help_text=_("The amount currently stored."),
     )
     needs_review = models.BooleanField(
         _("Needs review"),
         default=False,
-        help_text=_("Whether this storage item might be wrong")
+        help_text=_("Whether this storage item might be wrong"),
+    )
+    review_reason = models.TextField(
+        _("Reason for Review"),
+        blank=True,
+        null=True,
+        help_text=_("Put reason, why this item should be reviewed here in."),
     )
     disabled = models.BooleanField(
         _("Disabled"),
         default=False,
-        help_text=_("Whether the storage item is active.")
+        help_text=_("Whether the storage item is active."),
+    )
+    owner = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        verbose_name=_("Owned by"),
+        help_text=_("The user owning items of this storageitem."),
+        on_delete=models.PROTECT,
     )
 
     def __str__(self):
-        return u'%s; %s' % (self.part, self.storage)
+        return "%s; %s" % (self.part, self.storage)
+
+    @property
+    def get_owner(self):
+        # Return either owner of storage item or the owner of the
+        # storage. If nobody owns the storage, it returns None
+        return self.owner if self.owner else self.storage.owner
 
     def stock_report(self, new_on_stock, requested_user):
+        # Use this method for any kind of stock taking/hard updating
+        # of amount inside storage place from verified source
+
         if new_on_stock < 0:
             raise StorageItemBelowZeroException(
-                u("Tried to set {} amount below 0" % self.name)
+                ("Tried to set {} amount below 0" % self.name)
             )
 
         if new_on_stock >= 0:
@@ -628,66 +686,132 @@ class StorageItem(models.Model):
                 difference = new_on_stock - self.on_stock
 
             Transaction.objects.create(
-                subject=_(u'Difference from Stocktaking'),
+                subject="Difference from Stocktaking",
                 created_by=requested_user,
                 amount=difference,
                 storage_item=self,
-                date=timezone.now()
+                date=timezone.now(),
+            )
+            VerifiedStock.objects.create(
+                storage_item=self,
+                date=timezone.now(),
+                created_by=requested_user,
+                comment="Stocktaking",
+                amount=new_on_stock,
             )
 
+    def get_verified_stock(self):
+        tmp = VerifiedStock.objects.filter(storage_item__exact=self).order_by(
+            "id"
+        )
+        if len(tmp) == 0:
+            return None
+        else:
+            return tmp
+
+    def get_verified_stock_last(self):
+        try:
+            return VerifiedStock.objects.filter(
+                storage_item__exact=self
+            ).latest("id")
+        except VerifiedStock.DoesNotExist:
+            return None
+
     class Meta:
-        unique_together = ("part", "storage")
+        unique_together = ("part", "storage", "owner")
         verbose_name = _("Storage Item")
         verbose_name_plural = _("Storage Items")
-        ordering = ['storage', 'part']
+        ordering = ["storage", "part"]
 
 
-@python_2_unicode_compatible
-class Transaction(models.Model):
-    """ The transaction really taking place for the part """
-
-    subject = models.CharField(
-        _("Subject"),
-        max_length=100,
-        help_text=_("A short conclusion of the transaction.")
-    )
+class VerifiedStock(models.Model):
     storage_item = models.ForeignKey(
         StorageItem,
-        help_text=_("The part-storage relation the transaction was applied on.")
+        help_text=_("The part-storage relation the the stock was verified."),
+        on_delete=models.PROTECT,
     )
     amount = models.DecimalField(
         _("Amount"),
         max_digits=10,
         decimal_places=4,
-        help_text=_("The quantity transferred.")
+        help_text=_("The quantity at this very time."),
     )
     comment = models.TextField(
         _("Comment"),
         blank=True,
         null=True,
         max_length=200,
-        help_text=_("A short conclusion.")
+        help_text=_("A short conclusion."),
     )
+    date = models.DateTimeField(
+        _("Verfication Date"),
+        blank=False,
+        null=False,
+        default=datetime.now,
+        db_index=True,
+        help_text=_("The date the verifiedcation was created."),
+    )
+    created_by = models.ForeignKey(
+        User,
+        verbose_name=_("Created by"),
+        help_text=_("The user which verified the stock."),
+        on_delete=models.PROTECT,
+    )
+
+    def __str__(self):
+        return "%s %s" % (self.storage_item, self.date)
+
+
+class Transaction(models.Model):
+    """ The transaction really taking place for the part """
+
+    subject = models.CharField(
+        _("Subject"),
+        max_length=100,
+        help_text=_("A short conclusion of the transaction."),
+    )
+    storage_item = models.ForeignKey(
+        StorageItem,
+        help_text=_(
+            "The part-storage relation the transaction was applied on."
+        ),
+        on_delete=models.PROTECT,
+    )
+    amount = models.DecimalField(
+        _("Amount"),
+        max_digits=10,
+        decimal_places=4,
+        help_text=_("The quantity transferred."),
+    )
+    comment = models.TextField(
+        _("Comment"),
+        blank=True,
+        null=True,
+        max_length=200,
+        help_text=_("Optional: A short conclusion."),
+    )
+
     date = models.DateTimeField(
         _("Transaction Date"),
         blank=False,
         null=False,
         default=datetime.now,
         db_index=True,
-        help_text=_("The date the transaction took  part.")
+        help_text=_("The date the transaction took part."),
     )
     state = models.CharField(
         _("State"),
         max_length=6,
         choices=STATE_CHOICES,
         blank=True,
-        default='---',
-        help_text=_("The status a transaction is in.")
+        default="---",
+        help_text=_("The status a transaction is in."),
     )
     created_by = models.ForeignKey(
         User,
         verbose_name=_("Created by"),
-        help_text=_("The user which created the transaction.")
+        help_text=_("The user which created the transaction."),
+        on_delete=models.PROTECT,
     )
     created_date = models.TimeField(
         _("Creation timestamp"),
@@ -695,7 +819,7 @@ class Transaction(models.Model):
         null=False,
         auto_now_add=True,
         db_index=True,
-        help_text=_("The timestamp transaction has been entered.")
+        help_text=_("The timestamp transaction has been entered."),
     )
 
     reverted = models.BooleanField(
@@ -703,24 +827,24 @@ class Transaction(models.Model):
         default=False,
         help_text=_(
             "To control whether transaction has been already "
-            "reverted and cannot be reverted again.")
+            "reverted and cannot be reverted again."
+        ),
     )
 
     def __create_revert(self):
         if self.reverted is False:
             Transaction.objects.create(
-                subject=_(u'reverted {}'.format(self.subject)),
+                subject=_(u"reverted {}".format(self.subject)),
                 created_by=self.created_by,
                 amount=self.amount * -1,
                 storage_item=self.storage_item,
-                date=timezone.now()
+                date=timezone.now(),
             )
             self.reverted = True
             self.save()
         else:
             raise TransactionAllreadyRevertedException(
-                _(u'Transaktion »{}« '
-                  'was already reverted.'.format(self))
+                _("Transaktion »{}« " "was already reverted.".format(self))
             )
 
     def save(self, *args, **kwargs):
@@ -735,11 +859,11 @@ class Transaction(models.Model):
                 if old_transaction.storage_item.id is not self.storage_item.id:
                     old_transaction.__create_revert()
                     Transaction.objects.create(
-                        subject=_(u'moved {}'.format(old_transaction.subject)),
+                        subject=_(u"moved {}".format(old_transaction.subject)),
                         created_by=old_transaction.created_by,
                         amount=old_transaction.amount,
                         storage_item=self.storage_item,
-                        date=timezone.now()
+                        date=timezone.now(),
                     )
                     # We are done here. Now old transaction is reverted,
                     # Transaction with updated data is created.
@@ -747,11 +871,12 @@ class Transaction(models.Model):
                     return
                 if old_transaction.amount != self.amount:
                     storageitem = StorageItem.objects.get(
-                        pk=self.storage_item.id)
+                        pk=self.storage_item.id
+                    )
                     if storageitem.on_stock is not None:
                         storageitem.on_stock = (
-                            storageitem.on_stock - old_transaction.amount) \
-                            + self.amount
+                            storageitem.on_stock - old_transaction.amount
+                        ) + self.amount
                     elif self.amount:
                         storageitem.on_stock = self.amount
                     storageitem.save()
@@ -759,8 +884,9 @@ class Transaction(models.Model):
                 # We got a new Transaction
                 storageitem = StorageItem.objects.get(pk=self.storage_item.id)
                 if storageitem.on_stock is not None:
-                    storageitem.on_stock = storageitem.on_stock + \
-                        Decimal(self.amount)
+                    storageitem.on_stock = storageitem.on_stock + Decimal(
+                        self.amount
+                    )
                 elif self.amount is not None:
                     storageitem.on_stock = Decimal(self.amount)
                 storageitem.save()
@@ -771,9 +897,9 @@ class Transaction(models.Model):
         super(Transaction, self).save(*args, **kwargs)
 
     def __str__(self):
-        return '%s %s %s' % (self.subject, self.storage_item, self.date)
+        return "%s %s %s" % (self.subject, self.storage_item, self.date)
 
     class Meta:
         verbose_name = _("Transaction")
         verbose_name_plural = _("Transactions")
-        ordering = ['-date']
+        ordering = ["-date"]

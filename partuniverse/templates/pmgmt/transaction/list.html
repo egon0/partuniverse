@@ -18,11 +18,10 @@
    >
   <i class="icon add"></i> {% trans "Add" %}
 </a>
-<table class="ui table segment">
+<table class="ui table segment very compact">
   <thead>
     <tr>
       <th>{% trans "What" %}</th>
-      <th>{% trans "State" %}</th>
       <th>{% trans "Why" %}</th>
       <th>{% trans "How much" %}</th>
       <th>{% trans "When" %}</th>
@@ -33,11 +32,6 @@
     {% for item in object_list %}
     <tr>
       <td>{{ item.storage_item }}</td>
-      {% if item.state == '---' %}
-          <td></td>
-      {% else %}
-          <td>{{ item.state }} </td>
-      {% endif %}
       <td><a href="{% url "transaction_detail" item.id%}">{{ item.subject }}</a></td>
       <td>{{ item.amount|floatformat }}</td>
       <td>{{ item.date }}</td>
@@ -45,4 +39,15 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if is_paginated %}
+<div class="ui fluid pagination menu">
+  {% for number in page_obj.paginator.page_range %}
+  <a class="{% if number == page_obj.number %}active {% endif %}item" href="{% url "transaction_list" %}?page={{ number }}{% if view.search %}&amp;search={{ view.search }}{% endif %}">
+    {{ number }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% endblock %}

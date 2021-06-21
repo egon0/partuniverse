@@ -1,12 +1,12 @@
+dist: xenial
 language: python
 python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
+  - "3.6"
+  - "3.7"
 # command to install dependencies
 install:
   - pip install pep8
 before_script:
-  - "pep8 --exclude=migrations --ignore=E501 partuniverse"
+  - "pep8 --exclude=migrations --ignore=E501 --ignore=W503 partuniverse"
 # command to run tests
 script: bash test.sh

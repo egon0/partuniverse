@@ -12,6 +12,8 @@ To discuss about partuniverse or get help, join our mailing list at
 is also a XMPP-MUC available to chat. Join
 [partuniverse@chat.kraut.space](xmpp:partuniverse@chat.kraut.space).
 
+We do also have an matrix-chat. Join us at #partuniverse:matrix.org
+
 ## Bugreporting
 
 Please report bugs and feature wishes to the project page at [github](https://github.com/frlan/partuniverse/issues)
@@ -22,21 +24,20 @@ Please report bugs and feature wishes to the project page at [github](https://gi
 
 Partuniverse depends on:
 
-- Django and therefore Python
+- Django 2.x and therefore Python3
 - A database server supported by django (PostgreSQL recommended) and
   its development libraries --
   SQLlite -- the default -- should be fine for the very beginning
 - [Install](https://pillow.readthedocs.io/en/3.0.0/installation.html#linux-installation) development headers for the pillow.
 
 
-### Buildout
-
-The [zc.buildout](http://www.buildout.org/en/latest/) and all the dependcies will be installed via its bootstrap script:
+### Virtualenv
 
         $ pwd
         /path/to/your/sources/
-        $ python bootstrap-buildout.py
-        $ ./bin/buildout
+        $ virtualenv --python=python3 .
+        $ bin/pip install -r requirements.txt
+        $ source bin/activate
 
 ### Running
 
@@ -57,17 +58,21 @@ After this has been done, go ahead setting up your application.
 
 Go into the folder where you have checked out the sources.
 
+##### Virtualenv
 First you will have to create the Database:
 
-        $ ./bin/django migrate
+        $ source bin/activate
+        $ cd partuniverse
+        $ python manage.py migrate
 
 Create your superuser:
 
-        $ .bin/django createsuperuser
+        $ python manage.py createsuperuser
 
 If everything worked well, you can start the server (in debug mode):
 
-        $ ./bin/django runserver
+        $ python manage.py runserver
+
 
 ### Running a production instance behind Nginx
 
@@ -79,7 +84,7 @@ This part assumes the following steps:
   `/home/partuniverse/partuniverse`
 * You are using systemd
 * You have already recommpilled translations by running
-  `./bin/django compilemessages`
+  `../bin/python manage.pycompilemessages`
 
 Now do the following steps:
 
@@ -172,11 +177,34 @@ this, please develope one feature within one branch. Try to avoid hacking
 on your master branch. Having feature-branches allows easier merges/discussion/*.
 When finishing your featre, please send a pull request or a patchset via mail.
 
+### Example data
+
+We are trying to keep a valid set of example data with the repository.
+
+#### Usage & Installation
+
+You can add example data to your clean installation by something like:
+
+        $ python manage.py migrate # to create a new datase
+        $ python manage.py loaddata ../utils/example_data/example_data.json
+
+The example data providing a admin-user with username `admin` and
+password `init123!`.
+
+#### Updating
+
+After you made a bigger change you might want to provide an updated set
+of example data
+
+        $ python manage.py dumpdata > ../utils/example_data/example_data.json
+
+Please try to keep a clean set of data.
+
 ### Code style
 
 Please use [pep8](https://www.python.org/dev/peps/pep-0008/) for coding.
 As a little support tool you might can give [autopep8](https://pypi.python.org/pypi/autopep8) a try.
-
+Another nice tool is [black](https://github.com/psf/black).
 
 ### Testing
 
@@ -184,7 +212,8 @@ To test your changes, you can use Django's test framework
 
 To run all available tests:
 
-        $ ./bin/django test
+        $ cd partuniverse
+        $ ../bin/python manage.py test
 
 Please add new tests for each feature you are adding to suitable
 test-files.

@@ -16,7 +16,7 @@
 {% block content %}
 <form method="post" class="ui form" >
   {% csrf_token %}
-  {{ form|semanticui }}
+  {{ form }}
   <input class="ui blue button" type="submit" value="{% trans "Add" %}">
 </form>
 {% endblock %}
